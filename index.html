@@ -1,217 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StackOverflow Tag Trends</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-        }
-        #stats-container {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        #chart-container {
-            width: 100%;
-            height: 500px;
-            margin: 20px 0;
-        }
-        .error {
-            color: #e74c3c;
-            background: #fdecea;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .loading {
-            color: #7f8c8d;
-            text-align: center;
-            padding: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StackOverflow Tag Trends</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #fff;
+      padding: 30px 15px;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #ffffff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+      animation: slideDown 1.2s ease forwards;
+    }
+
+    #stats-container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 25px;
+      margin: 20px auto;
+      max-width: 700px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      animation: fadeIn 1s ease-in-out 0.5s forwards;
+      opacity: 0;
+      transition: transform 0.3s;
+    }
+
+    #stats-container:hover {
+      transform: scale(1.02);
+    }
+
+    #stats-container h3 {
+      color: #ffd700;
+      margin-bottom: 15px;
+      font-size: 1.3rem;
+    }
+
+    #stats-container p {
+      margin: 8px 0;
+      font-size: 1rem;
+      color: #f0f0f0;
+      transition: all 0.4s;
+    }
+
+    #error-message {
+      background: rgba(255, 0, 0, 0.2);
+      color: #ffe6e6;
+      border: 1px solid red;
+      border-radius: 8px;
+      padding: 15px;
+      max-width: 700px;
+      margin: 20px auto;
+      text-align: center;
+      display: none;
+      animation: fadeIn 0.7s ease-in-out;
+    }
+
+    #chart-container {
+      max-width: 1000px;
+      height: 500px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+      animation: popIn 1.2s ease forwards;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .loading {
+      font-size: 1rem;
+      padding: 20px;
+      color: #ddd;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-50px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.9); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-    <h1>📊 StackOverflow Tag Trends</h1>
-    
-    <div id="stats-container">
-        <div class="loading">Loading statistics...</div>
-    </div>
-    
-    <div id="error-message" class="error" style="display: none;"></div>
-    
-    <div id="chart-container">
-        <canvas id="trendChart"></canvas>
-    </div>
+  <h1>📊 StackOverflow Tag Trends</h1>
 
-    <script>
-        // Global chart reference
-        let trendChart;
-        
-        // Color palette for charts
-        const CHART_COLORS = [
-            '#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
-            '#59a14f', '#edc948', '#b07aa1', '#ff9da7',
-            '#9c755f', '#bab0ac'
-        ];
-        
-        // Main initialization function
-        async function initApp() {
-            try {
-            
-                await loadStats();
-                await loadChart();
-            } catch (error) {
-                showError(`Application error: ${error.message}`);
-                console.error('App initialization failed:', error);
+  <div id="stats-container">
+    <div class="loading">Loading statistics...</div>
+  </div>
+
+  <div id="error-message"></div>
+
+  <div id="chart-container">
+    <canvas id="trendChart"></canvas>
+  </div>
+
+  <script>
+    let trendChart;
+    const CHART_COLORS = [
+      '#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
+      '#59a14f', '#edc948', '#b07aa1', '#ff9da7',
+      '#9c755f', '#bab0ac'
+    ];
+
+    async function initApp() {
+      try {
+        await loadStats();
+        await loadChart();
+      } catch (error) {
+        showError(`Application error: ${error.message}`);
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/general-stats');
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        animateStats(data);
+      } catch (error) {
+        showError(`Failed to load statistics: ${error.message}`);
+        throw error;
+      }
+    }
+
+    function animateStats(data) {
+      const container = document.getElementById('stats-container');
+      container.innerHTML = `
+        <h3>📈 Statistics</h3>
+        <p><strong>Total Tags:</strong> <span id="tagCount">0</span></p>
+        <p><strong>Time Range:</strong> ${data.time_range.start} - ${data.time_range.end}</p>
+        <p><strong>Years Covered:</strong> ${data.years_covered}</p>
+      `;
+
+      // Count animation
+      let count = 0;
+      const end = data.total_tags;
+      const tagCount = document.getElementById('tagCount');
+      const interval = setInterval(() => {
+        count += Math.ceil(end / 100);
+        if (count >= end) {
+          count = end;
+          clearInterval(interval);
+        }
+        tagCount.textContent = count;
+      }, 20);
+    }
+
+    async function loadChart() {
+      try {
+        const response = await fetch('/api/tag-trends');
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        renderChart(data);
+      } catch (error) {
+        showError(`Failed to load trend data: ${error.message}`);
+        throw error;
+      }
+    }
+
+    function renderChart(chartData) {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      const datasets = chartData.tags.map((tag, index) => ({
+        label: tag,
+        data: chartData.data[tag],
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[index % CHART_COLORS.length] + '80',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: false
+      }));
+
+      if (trendChart) trendChart.destroy();
+
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Top 10 StackOverflow Tags by Year',
+              font: { size: 18 }
+            },
+            legend: {
+              position: 'bottom',
+              labels: { padding: 20, boxWidth: 12 }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false
             }
-        }
-        
-        // Load statistics data
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/general-stats');
-                
-                if (!response.ok) {
-                    throw new Error(`Server returned ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                updateStatsUI(data);
-                
-            } catch (error) {
-                showError(`Failed to load statistics: ${error.message}`);
-                throw error; // Re-throw for initApp to catch
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Number of Questions' }
+            },
+            x: {
+              title: { display: true, text: 'Year' }
             }
+          }
         }
-        
-        // Update statistics display
-        function updateStatsUI(data) {
-            document.getElementById('stats-container').innerHTML = `
-                <h3>📈 Statistics</h3>
-                <p><strong>Total Tags:</strong> ${data.total_tags}</p>
-                <p><strong>Time Range:</strong> ${data.time_range.start} - ${data.time_range.end}</p>
-                <p><strong>Years Covered:</strong> ${data.years_covered}</p>
-            `;
-        }
-        
-        // Load chart data
-        async function loadChart() {
-            try {
-                const response = await fetch('/api/tag-trends');
-                
-                if (!response.ok) {
-                    throw new Error(`Server returned ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                renderChart(data);
-                
-            } catch (error) {
-                showError(`Failed to load trend data: ${error.message}`);
-                throw error; // Re-throw for initApp to catch
-            }
-        }
-        
-        // Render the chart
-        function renderChart(chartData) {
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            
-            // Prepare datasets
-            const datasets = chartData.tags.map((tag, index) => ({
-                label: tag,
-                data: chartData.data[tag],
-                borderColor: CHART_COLORS[index % CHART_COLORS.length],
-                backgroundColor: CHART_COLORS[index % CHART_COLORS.length] + '80',
-                borderWidth: 2,
-                tension: 0.1,
-                fill: false
-            }));
-            
-            // Destroy previous chart if exists
-            if (trendChart) {
-                trendChart.destroy();
-            }
-            
-            // Create new chart
-            trendChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: chartData.labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Top 10 StackOverflow Tags by Year',
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                boxWidth: 12
-                            }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Questions'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Show error message
-        function showError(message) {
-            const errorDiv = document.getElementById('error-message');
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = message;
-        }
-        
-        // Initialize when page loads
-        window.addEventListener('DOMContentLoaded', initApp);
-    </script>
+      });
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error-message');
+      errorDiv.style.display = 'block';
+      errorDiv.textContent = message;
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
 </body>
 </html>
