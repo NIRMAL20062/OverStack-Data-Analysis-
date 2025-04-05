@@ -9,7 +9,7 @@ CORS(app)  # Enable CORS for all routes
 def load_data():
     try:
         # Verify CSV exists
-        csv_path = r'C:\Users\kumar\Sitare University\Sitare University\Semister-2\Data Handling in Pyhton\Week-9 Project\Github Deploy\OverStack-Data-Analysis-\top_tags_per_year.csv'
+        csv_path = r'top_tags_per_year.csv'
         if not os.path.exists(csv_path):
             raise FileNotFoundError("CSV file not found")
         
